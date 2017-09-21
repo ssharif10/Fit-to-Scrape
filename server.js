@@ -43,44 +43,45 @@ db.once("open", function() {
 
 //A Get request to scrape website
 app.get("/scrape", function(req, res) {
-	//grabbing body of html with request
-	request("http://.com/", function (error, response, html) {
+  // First, we grab the body of the html with request
+  request("http://www.huffingtonpost.com/", function(error, response, html) {
+    // Then, we load that into cheerio and save it to $ for a shorthand selector
+    var $ = cheerio.load(html);
+    // Now, we grab every h2 within an article tag, and do the following:
+    $("article h2").each(function(i, element) {
 
-		var $ = cheerio.load(html);
+      // Save an empty result object
+      var result = {};
 
-		$("article h2").each(function(i, element) {
+      // Add the text and href of every link, and save them as properties of the result object
+      result.title = $(this).children("a").text();
+      result.link = $(this).children("a").attr("href");
 
-			var result = {}
+      // Using our Article model, create a new entry
+      // This effectively passes the result object to the entry (and the title and link)
+      var entry = new Article(result);
 
-			result.title = $(this).children("a").text();
-			result.link = $(this).children("a").attr("href");
+      // Now, save that entry to the db
+      entry.save(function(err, doc) {
+        // Log any errors
+        if (err) {
+          console.log(err);
+        }
+        // Or log the doc
+        else {
+          console.log(doc);
+        }
+      });
 
-
-			var entry = new Article(result);
-
-			entry.save(function(err, doc) {
-
-				if (err) {
-					console.log(err);
-				}
-
-				else {
-					console.log(doc);
-				}
-			});
-		});
-	});
-
-	res.send("Scrap is now complete");
+    });
+  });
+  // Tell the browser that we finished scraping the text
+  res.send("Scrape Complete");
 });
 
-app.get("/articles/:id", function(req, res) {
+app.get("/articles", function(req, res) {
 
-	Article.findOne({ "_id" req.params.id })
-
-	.populate("note")
-
-	.exec(function(error, doc) {
+	Article.find({}, function(error, doc) {
 
 		if (error) {
 			console.log(error);
